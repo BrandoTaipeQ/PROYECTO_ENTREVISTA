@@ -1,5 +1,3 @@
-# PROYECTO_ENTREVISTA
-Este proyecto es de prueba para un  análisis de gestos  
 # 🎭 Orquesta de Agentes IA para Entrevistas en Vivo
 
 Este proyecto implementa una solución avanzada basada en una orquesta de agentes de Inteligencia Artificial para la detección de gestos, expresiones y comportamientos en tiempo real durante entrevistas.
@@ -18,7 +16,7 @@ graph TD
     API -- WebSocket --> DB[Streamlit Dashboard]
 ```
 
-- **Agente de Captura**: Obtiene el video en tiempo real desde la cámara o archivo.
+- **Agente de Captura**: Obtiene el video en tiempo real desde la cámara, archivo o simulación.
 - **Agente de Procesamiento Visual**: Extrae landmarks faciales, de manos y postura usando MediaPipe.
 - **Agente de Análisis Conductual**: Interpreta los landmarks para detectar emociones y métricas de comportamiento (estrés, confianza).
 - **Agente de Visualización**: Formatea los datos y prepara la transmisión de video para el dashboard.
@@ -54,10 +52,10 @@ streamlit run dashboard/app.py
 
 ## 📊 Funcionalidades del Dashboard
 
-- **Visualización en Vivo**: Stream de video procesado.
+- **Visualización en Vivo**: Stream de video procesado con landmarks.
 - **Indicadores de Emociones**: Desglose en tiempo real de estados emocionales.
 - **Métricas de Comportamiento**: Barras de progreso para Estrés, Confianza y Nerviosismo.
-- **Análisis de Postura**: Identificación de la postura corporal.
+- **Análisis de Postura**: Identificación de la postura corporal y landmarks.
 
 ## 🐳 Docker
 
@@ -71,5 +69,10 @@ docker run -p 8000:8000 -p 8501:8501 ai-orchestra
 ## 🧪 Pruebas
 Ejecuta las pruebas unitarias con:
 ```bash
-python3 -m pytest tests/
+PYTHONPATH=. pytest tests/
 ```
+
+## 🔍 Detalles Técnicos Key
+- **Desacoplamiento**: Cada agente tiene una responsabilidad única, lo que permite intercambiar el modelo de análisis sin afectar la captura o el streaming.
+- **Real-time**: El uso de WebSockets minimiza la latencia entre el procesamiento y la visualización.
+- **Robustez**: El Agente de Captura incluye un fallback a un stream simulado si no se detecta hardware de cámara.
