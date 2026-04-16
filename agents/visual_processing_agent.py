@@ -1,14 +1,16 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-from mediapipe.python.solutions import face_mesh
+from mediapipe.python.solutions import face_mesh, hands, pose, drawing_utils, drawing_styles
 
 class VisualProcessingAgent:
     def __init__(self):
-        # Using the specific import requested by the user for face_mesh
+        # Using the specific imports requested for reliability
         self.mp_face_mesh = face_mesh
-        self.mp_hands = mp.solutions.hands
-        self.mp_pose = mp.solutions.pose
+        self.mp_hands = hands
+        self.mp_pose = pose
+        self.mp_drawing = drawing_utils
+        self.mp_drawing_styles = drawing_styles
 
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=False,
@@ -17,20 +19,17 @@ class VisualProcessingAgent:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
-        self.hands = self.mp_hands.Hands(
+        self.hands_detector = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
-        self.pose = self.mp_pose.Pose(
+        self.pose_detector = self.mp_pose.Pose(
             static_image_mode=False,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
-
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
 
     def process_frame(self, frame):
         # Convert BGR to RGB
@@ -38,8 +37,8 @@ class VisualProcessingAgent:
 
         # Process face, hands, and pose
         face_results = self.face_mesh.process(rgb_frame)
-        hand_results = self.hands.process(rgb_frame)
-        pose_results = self.pose.process(rgb_frame)
+        hand_results = self.hands_detector.process(rgb_frame)
+        pose_results = self.pose_detector.process(rgb_frame)
 
         return {
             "face": face_results,
