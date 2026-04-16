@@ -1,10 +1,12 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+from mediapipe.python.solutions import face_mesh
 
 class VisualProcessingAgent:
     def __init__(self):
-        self.mp_face_mesh = mp.solutions.face_mesh
+        # Using the specific import requested by the user for face_mesh
+        self.mp_face_mesh = face_mesh
         self.mp_hands = mp.solutions.hands
         self.mp_pose = mp.solutions.pose
 
