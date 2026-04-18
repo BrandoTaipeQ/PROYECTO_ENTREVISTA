@@ -17,19 +17,15 @@ class BehavioralAnalysisAgent:
         confidence_level = 0.5
         nervousness = 0.1
 
-        if face_results and face_results.multi_face_landmarks:
-            # Simple heuristic for emotion (random for demo, but could be EAR/MAR based)
+        if face_results and face_results.face_landmarks:
             current_emotion = np.random.choice(self.emotions, p=[0.7, 0.1, 0.05, 0.1, 0.05])
-            # Stress based on blink rate or tension (simulated via presence of landmarks)
             stress_level = np.random.uniform(0.1, 0.3)
 
         if pose_results and pose_results.pose_landmarks:
-            # Posture check: higher confidence if shoulders are level and upright
             confidence_level = np.random.uniform(0.6, 0.9)
 
-        if hand_results and hand_results.multi_hand_landmarks:
-            # Many hand movements might indicate nervousness
-            num_hands = len(hand_results.multi_hand_landmarks)
+        if hand_results and hand_results.hand_landmarks:
+            num_hands = len(hand_results.hand_landmarks)
             nervousness = 0.2 + (0.1 * num_hands) + np.random.uniform(0, 0.2)
 
         return {

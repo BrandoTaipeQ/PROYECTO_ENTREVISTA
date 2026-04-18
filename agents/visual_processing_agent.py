@@ -1,90 +1,97 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-from mediapipe.python.solutions import face_mesh
+import urllib.request
+import os
+
+from mediapipe.tasks import python as mp_python
+from mediapipe.tasks.python import vision
+
+MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models')
+
+_MODEL_URLS = {
+    'face':  ('face_landmarker.task',      'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'),
+    'hands': ('hand_landmarker.task',      'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'),
+    'pose':  ('pose_landmarker_lite.task', 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'),
+}
+
+def _ensure_model(name):
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    filename, url = _MODEL_URLS[name]
+    path = os.path.join(MODELS_DIR, filename)
+    if not os.path.exists(path):
+        print(f"Downloading {name} model...")
+        urllib.request.urlretrieve(url, path)
+        print(f"Downloaded {name} model.")
+    return path
+
 
 class VisualProcessingAgent:
     def __init__(self):
-        # Using the specific import requested by the user for face_mesh
-        self.mp_face_mesh = face_mesh
-        self.mp_hands = mp.solutions.hands
-        self.mp_pose = mp.solutions.pose
+        face_path  = _ensure_model('face')
+        hands_path = _ensure_model('hands')
+        pose_path  = _ensure_model('pose')
 
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+        self.face_landmarker = vision.FaceLandmarker.create_from_options(
+            vision.FaceLandmarkerOptions(
+                base_options=mp_python.BaseOptions(model_asset_path=face_path),
+                num_faces=1,
+                min_face_detection_confidence=0.5,
+                min_face_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
+            )
         )
-        self.hands = self.mp_hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+        self.hand_landmarker = vision.HandLandmarker.create_from_options(
+            vision.HandLandmarkerOptions(
+                base_options=mp_python.BaseOptions(model_asset_path=hands_path),
+                num_hands=2,
+                min_hand_detection_confidence=0.5,
+                min_hand_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
+            )
         )
-        self.pose = self.mp_pose.Pose(
-            static_image_mode=False,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+        self.pose_landmarker = vision.PoseLandmarker.create_from_options(
+            vision.PoseLandmarkerOptions(
+                base_options=mp_python.BaseOptions(model_asset_path=pose_path),
+                min_pose_detection_confidence=0.5,
+                min_pose_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
+            )
         )
-
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
 
     def process_frame(self, frame):
-        # Convert BGR to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # Process face, hands, and pose
-        face_results = self.face_mesh.process(rgb_frame)
-        hand_results = self.hands.process(rgb_frame)
-        pose_results = self.pose.process(rgb_frame)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
         return {
-            "face": face_results,
-            "hands": hand_results,
-            "pose": pose_results
+            "face":  self.face_landmarker.detect(mp_image),
+            "hands": self.hand_landmarker.detect(mp_image),
+            "pose":  self.pose_landmarker.detect(mp_image),
         }
 
     def draw_landmarks(self, frame, results):
-        annotated_frame = frame.copy()
+        annotated = frame.copy()
+        h, w = frame.shape[:2]
 
-        # Draw face mesh
-        if results["face"].multi_face_landmarks:
-            for face_landmarks in results["face"].multi_face_landmarks:
-                self.mp_drawing.draw_landmarks(
-                    image=annotated_frame,
-                    landmark_list=face_landmarks,
-                    connections=self.mp_face_mesh.FACEMESH_TESSELATION,
-                    landmark_drawing_spec=None,
-                    connection_drawing_spec=self.mp_drawing_styles.get_default_face_mesh_tesselation_style()
-                )
+        if results["face"].face_landmarks:
+            for landmarks in results["face"].face_landmarks:
+                for lm in landmarks:
+                    cv2.circle(annotated, (int(lm.x * w), int(lm.y * h)), 1, (0, 255, 0), -1)
 
-        # Draw hands
-        if results["hands"].multi_hand_landmarks:
-            for hand_landmarks in results["hands"].multi_hand_landmarks:
-                self.mp_drawing.draw_landmarks(
-                    annotated_frame,
-                    hand_landmarks,
-                    self.mp_hands.HAND_CONNECTIONS,
-                    self.mp_drawing_styles.get_default_hand_landmarks_style(),
-                    self.mp_drawing_styles.get_default_hand_connections_style()
-                )
+        if results["hands"].hand_landmarks:
+            for landmarks in results["hands"].hand_landmarks:
+                for lm in landmarks:
+                    cv2.circle(annotated, (int(lm.x * w), int(lm.y * h)), 4, (255, 0, 0), -1)
 
-        # Draw pose
         if results["pose"].pose_landmarks:
-            self.mp_drawing.draw_landmarks(
-                annotated_frame,
-                results["pose"].pose_landmarks,
-                self.mp_pose.POSE_CONNECTIONS,
-                landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style()
-            )
+            for landmarks in results["pose"].pose_landmarks:
+                for lm in landmarks:
+                    cv2.circle(annotated, (int(lm.x * w), int(lm.y * h)), 5, (0, 0, 255), -1)
 
-        return annotated_frame
+        return annotated
+
 
 if __name__ == "__main__":
-    # Basic smoke test
     agent = VisualProcessingAgent()
     dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     res = agent.process_frame(dummy_frame)
